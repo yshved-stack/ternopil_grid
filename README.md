@@ -10,7 +10,7 @@
 Planned outage schedule + ultra-fast power detection via TCP keep-alive ping to a smart plug (2–3s reaction).
 
 ## Features
-- Outage group selection (1.1..4.4) via UI (select entity)
+- Outage group selection (1.1..6.7) via UI (select entity)
 - TCP ping power detection:
   - `binary_sensor.ternopil_grid_power`
 - Schedule entities:

@@ -53,7 +53,10 @@ class TernopilNextChange(_BaseSensor):
     def native_value(self):
         now = dt_util.utcnow().timestamp()
         future = [s["start"] for s in (self.coordinator.data or []) if s["start"] > now]
-        return min(future) if future else None
+        if not future:
+            return None
+        ts = min(future)
+        return dt_util.utc_from_timestamp(ts)
 
 
 class TernopilCountdown(_BaseSensor):
@@ -62,10 +65,10 @@ class TernopilCountdown(_BaseSensor):
 
     @property
     def native_value(self):
-        nxt = TernopilNextChange(self.entry, self.coordinator).native_value
-        if not nxt:
+        nxt_dt = TernopilNextChange(self.entry, self.coordinator).native_value
+        if not nxt_dt:
             return "--"
-        diff = int(nxt - dt_util.utcnow().timestamp())
+        diff = int(nxt_dt.timestamp() - dt_util.utcnow().timestamp())
         if diff < 0:
             return "--"
         h = diff // 3600

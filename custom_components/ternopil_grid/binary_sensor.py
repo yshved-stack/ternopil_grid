@@ -28,9 +28,14 @@ class _BaseBinary(BinarySensorEntity):
 
 
 class TernopilGridPowerPing(_BaseBinary):
-    # binary_sensor.ternopil_grid_power
     def __init__(self, entry, ping_coordinator):
-        super().__init__(entry, "Power (ping)", "ternopil_grid_power", "mdi:power-plug", "power")
+        super().__init__(
+            entry,
+            "Power (ping)",
+            "ternopil_grid_power_ping",
+            "mdi:power-plug",
+            "power",
+        )
         self.ping = ping_coordinator
 
     @property
@@ -47,9 +52,14 @@ class TernopilGridPowerPing(_BaseBinary):
 
 
 class TernopilPlannedOutage(_BaseBinary):
-    # binary_sensor.ternopil_grid_planned_outage
     def __init__(self, entry, schedule_coordinator):
-        super().__init__(entry, "Planned outage", "ternopil_grid_planned_outage", "mdi:transmission-tower-off", "power")
+        super().__init__(
+            entry,
+            "Planned outage",
+            "ternopil_grid_planned_outage",
+            "mdi:transmission-tower-off",
+            "power",
+        )
         self.schedule = schedule_coordinator
 
     @property

@@ -14,8 +14,8 @@ class TernopilGroupSelect(SelectEntity):
     def __init__(self, hass, entry):
         self.hass = hass
         self.entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_ternopil_grid_group"
-        self._attr_suggested_object_id = "ternopil_grid_group"
+        self._attr_unique_id = f"{entry.entry_id}_ternopil_grid_outage_group"
+        self._attr_suggested_object_id = "ternopil_grid_outage_group"
 
     @property
     def current_option(self):

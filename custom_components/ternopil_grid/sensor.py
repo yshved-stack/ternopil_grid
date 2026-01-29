@@ -1,11 +1,44 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import timedelta
-from homeassistant.components.sensor import SensorEntity
+
+from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, ATTRIBUTION
+from .const import ATTRIBUTION, DOMAIN
+
+
+@dataclass(frozen=True, kw_only=True)
+class TGDSensorDescription(SensorEntityDescription):
+    key: str
+
+
+DESC_NEXT_CHANGE = TGDSensorDescription(
+    key="next_change",
+    name="Next change",
+    icon="mdi:clock-outline",
+    device_class="timestamp",
+)
+
+DESC_COUNTDOWN = TGDSensorDescription(
+    key="countdown",
+    name="Countdown",
+    icon="mdi:timer-outline",
+)
+
+DESC_OFF_TODAY = TGDSensorDescription(
+    key="off_today",
+    name="OFF today",
+    icon="mdi:calendar-today",
+)
+
+DESC_OFF_TOMORROW = TGDSensorDescription(
+    key="off_tomorrow",
+    name="OFF tomorrow",
+    icon="mdi:calendar",
+)
 
 
 def _local_date_from_ts(ts: float):
@@ -16,19 +49,16 @@ def _hhmm(ts: float):
     return dt_util.as_local(dt_util.utc_from_timestamp(ts)).strftime("%H:%M")
 
 
-class _BaseSensor(SensorEntity):
-    def __init__(self, entry, coordinator, name, icon, suggested_object_id: str):
+class TernopilGridSensor(SensorEntity):
+    _attr_has_entity_name = True
+
+    def __init__(self, entry, coordinator, description: TGDSensorDescription):
         self.entry = entry
         self.coordinator = coordinator
-        self._attr_name = name
-        self._attr_icon = icon
-        self._attr_attribution = ATTRIBUTION
-        self._attr_unique_id = f"{entry.entry_id}_{suggested_object_id}"
-        self._attr_suggested_object_id = suggested_object_id
+        self.entity_description = description
 
-    @property
-    def available(self):
-        return self.coordinator.last_update_success
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
+        self._attr_attribution = ATTRIBUTION
 
     @property
     def device_info(self):
@@ -39,15 +69,17 @@ class _BaseSensor(SensorEntity):
             model="Outage schedule",
         )
 
+    @property
+    def available(self):
+        return self.coordinator.last_update_success
+
     async def async_added_to_hass(self):
         self.async_on_remove(self.coordinator.async_add_listener(self.async_write_ha_state))
 
 
-class TernopilNextChange(_BaseSensor):
-    _attr_device_class = "timestamp"
-
+class TernopilNextChange(TernopilGridSensor):
     def __init__(self, entry, schedule):
-        super().__init__(entry, schedule, "Next change", "mdi:clock-outline", "ternopil_grid_next_change")
+        super().__init__(entry, schedule, DESC_NEXT_CHANGE)
 
     @property
     def native_value(self):
@@ -55,20 +87,19 @@ class TernopilNextChange(_BaseSensor):
         future = [s["start"] for s in (self.coordinator.data or []) if s["start"] > now]
         if not future:
             return None
-        ts = min(future)
-        return dt_util.utc_from_timestamp(ts)
+        return dt_util.utc_from_timestamp(min(future))
 
 
-class TernopilCountdown(_BaseSensor):
+class TernopilCountdown(TernopilGridSensor):
     def __init__(self, entry, schedule):
-        super().__init__(entry, schedule, "Countdown", "mdi:timer-outline", "ternopil_grid_countdown")
+        super().__init__(entry, schedule, DESC_COUNTDOWN)
 
     @property
     def native_value(self):
-        nxt_dt = TernopilNextChange(self.entry, self.coordinator).native_value
-        if not nxt_dt:
+        nxt = TernopilNextChange(self.entry, self.coordinator).native_value
+        if not nxt:
             return "--"
-        diff = int(nxt_dt.timestamp() - dt_util.utcnow().timestamp())
+        diff = int(nxt.timestamp() - dt_util.utcnow().timestamp())
         if diff < 0:
             return "--"
         h = diff // 3600
@@ -76,9 +107,9 @@ class TernopilCountdown(_BaseSensor):
         return f"{h}h {m}m"
 
 
-class TernopilOffToday(_BaseSensor):
+class TernopilOffToday(TernopilGridSensor):
     def __init__(self, entry, schedule):
-        super().__init__(entry, schedule, "OFF today", "mdi:calendar-today", "ternopil_grid_off_today")
+        super().__init__(entry, schedule, DESC_OFF_TODAY)
 
     @property
     def native_value(self):
@@ -94,9 +125,9 @@ class TernopilOffToday(_BaseSensor):
         return {"blocks": blocks}
 
 
-class TernopilOffTomorrow(_BaseSensor):
+class TernopilOffTomorrow(TernopilGridSensor):
     def __init__(self, entry, schedule):
-        super().__init__(entry, schedule, "OFF tomorrow", "mdi:calendar", "ternopil_grid_off_tomorrow")
+        super().__init__(entry, schedule, DESC_OFF_TOMORROW)
 
     @property
     def native_value(self):

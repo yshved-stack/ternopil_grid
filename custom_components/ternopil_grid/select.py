@@ -3,10 +3,11 @@ from __future__ import annotations
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.entity import DeviceInfo
 
-from .const import DOMAIN, CONF_GROUP, DEFAULT_GROUP, GROUP_OPTIONS
+from .const import CONF_GROUP, DEFAULT_GROUP, DOMAIN, GROUP_OPTIONS
 
 
 class TernopilGroupSelect(SelectEntity):
+    _attr_has_entity_name = True
     _attr_icon = "mdi:account-group"
     _attr_name = "Outage group"
     _attr_options = GROUP_OPTIONS
@@ -14,8 +15,7 @@ class TernopilGroupSelect(SelectEntity):
     def __init__(self, hass, entry):
         self.hass = hass
         self.entry = entry
-        self._attr_unique_id = f"{entry.entry_id}_ternopil_grid_outage_group"
-        self._attr_suggested_object_id = "ternopil_grid_outage_group"
+        self._attr_unique_id = f"{entry.entry_id}_outage_group"
 
     @property
     def current_option(self):

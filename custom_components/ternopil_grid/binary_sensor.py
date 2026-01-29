@@ -1,21 +1,43 @@
 from __future__ import annotations
 
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from dataclasses import dataclass
+
+from homeassistant.components.binary_sensor import BinarySensorEntity, BinarySensorEntityDescription
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 
 
-class _BaseBinary(BinarySensorEntity):
-    def __init__(self, entry, name: str, suggested_object_id: str, icon: str, device_class: str | None = None):
+@dataclass(frozen=True, kw_only=True)
+class TGDBinaryDescription(BinarySensorEntityDescription):
+    key: str
+
+
+POWER_PING = TGDBinaryDescription(
+    key="power_ping",
+    name="Power (ping)",
+    icon="mdi:power-plug",
+    device_class="power",
+)
+
+PLANNED_OUTAGE = TGDBinaryDescription(
+    key="planned_outage",
+    name="Planned outage",
+    icon="mdi:transmission-tower-off",
+    device_class="power",
+)
+
+
+class TernopilGridBinary(BinarySensorEntity):
+    _attr_has_entity_name = True
+
+    def __init__(self, entry, description: TGDBinaryDescription, coordinator):
+        self.entity_description = description
         self.entry = entry
-        self._attr_name = name
-        self._attr_unique_id = f"{entry.entry_id}_{suggested_object_id}"
-        self._attr_suggested_object_id = suggested_object_id
-        self._attr_icon = icon
-        if device_class:
-            self._attr_device_class = device_class
+        self.coordinator = coordinator
+
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
 
     @property
     def device_info(self):
@@ -26,56 +48,38 @@ class _BaseBinary(BinarySensorEntity):
             model="Power + Schedule",
         )
 
-
-class TernopilGridPowerPing(_BaseBinary):
-    def __init__(self, entry, ping_coordinator):
-        super().__init__(
-            entry,
-            "Power (ping)",
-            "ternopil_grid_power_ping",
-            "mdi:power-plug",
-            "power",
-        )
-        self.ping = ping_coordinator
-
     @property
     def available(self):
-        return self.ping.last_update_success
+        return self.coordinator.last_update_success
+
+
+class TernopilGridPowerPing(TernopilGridBinary):
+    def __init__(self, entry, ping_coordinator):
+        super().__init__(entry, POWER_PING, ping_coordinator)
 
     @property
     def is_on(self):
-        data = self.ping.data or {}
+        data = self.coordinator.data or {}
         return bool(data.get("ok"))
 
     async def async_added_to_hass(self):
-        self.async_on_remove(self.ping.async_add_listener(self.async_write_ha_state))
+        self.async_on_remove(self.coordinator.async_add_listener(self.async_write_ha_state))
 
 
-class TernopilPlannedOutage(_BaseBinary):
+class TernopilPlannedOutage(TernopilGridBinary):
     def __init__(self, entry, schedule_coordinator):
-        super().__init__(
-            entry,
-            "Planned outage",
-            "ternopil_grid_planned_outage",
-            "mdi:transmission-tower-off",
-            "power",
-        )
-        self.schedule = schedule_coordinator
-
-    @property
-    def available(self):
-        return self.schedule.last_update_success
+        super().__init__(entry, PLANNED_OUTAGE, schedule_coordinator)
 
     @property
     def is_on(self):
         now = dt_util.utcnow().timestamp()
-        for seg in self.schedule.data or []:
+        for seg in self.coordinator.data or []:
             if seg["start"] <= now < seg["end"]:
                 return seg["color"] in ("red", "yellow")
         return False
 
     async def async_added_to_hass(self):
-        self.async_on_remove(self.schedule.async_add_listener(self.async_write_ha_state))
+        self.async_on_remove(self.coordinator.async_add_listener(self.async_write_ha_state))
 
 
 async def async_setup_entry(hass, entry, async_add_entities):

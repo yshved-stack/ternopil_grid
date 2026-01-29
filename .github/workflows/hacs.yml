@@ -2,6 +2,7 @@ name: HACS
 on:
   push:
   pull_request:
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -10,3 +11,4 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
+          ignore: brands

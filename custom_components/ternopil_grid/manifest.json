@@ -1,11 +1,11 @@
 {
   "domain": "ternopil_grid",
   "name": "Ternopil Grid Schedule",
-  "version": "1.2.0",
-  "documentation": "https://github.com/yshved-stack/ternopil-grid-schedule",
-  "issue_tracker": "https://github.com/yshved-stack/ternopil-grid-schedule/issues",
   "codeowners": ["@yshved-stack"],
   "config_flow": true,
+  "documentation": "https://github.com/yshved-stack/ternopil_grid",
   "iot_class": "cloud_polling",
-  "requirements": []
+  "issue_tracker": "https://github.com/yshved-stack/ternopil_grid/issues",
+  "requirements": [],
+  "version": "1.2.0"
 }

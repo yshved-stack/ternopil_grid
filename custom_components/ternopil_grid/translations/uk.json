@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ternopil Grid Schedule",
+        "description": "Оберіть групу та налаштування пінгу",
+        "data": {
+          "group": "Група відключень",
+          "ping_ip": "IP для пінгу",
+          "ping_port": "TCP порт",
+          "ping_timeout": "Таймаут (с)",
+          "ping_interval": "Інтервал (с)"
+        }
+      }
+    }
+  }
+}

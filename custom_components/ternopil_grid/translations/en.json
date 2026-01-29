@@ -1,0 +1,17 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ternopil Grid Schedule",
+        "description": "Choose outage group and ping settings",
+        "data": {
+          "group": "Outage group",
+          "ping_ip": "Ping IP",
+          "ping_port": "Ping TCP port",
+          "ping_timeout": "Ping timeout (s)",
+          "ping_interval": "Ping interval (s)"
+        }
+      }
+    }
+  }
+}

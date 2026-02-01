@@ -42,7 +42,7 @@ def _debug_key(city_id: int | str, street_id: int | str) -> str:
 
 def _build_url(path: str, params: dict[str, str]) -> str:
     """Build a URL with proper encoding (handles + in +00:00, Cyrillic, spaces, etc.)."""
-    base = f"{API}/{path.lstrip("/")}"
+    base = f"{API}/{path.lstrip('/')}"
     if URL is not None:
         return str(URL(base).with_query(params))
     # Fallback (should rarely be used in HA container)
@@ -108,3 +108,100 @@ async def fetch_building_groups(hass, city_id: int, street_id: int) -> list[str]
     """Return list of building groups (strings). Config flow expects a list."""
     grp = await fetch_building_group(hass, city_id, street_id)
     return [grp] if grp else []
+
+
+def _utc_day_start(now: datetime) -> datetime:
+    return now.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _format_utc(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _parse_date_graph(value: Any) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+async def fetch_schedule(
+    hass,
+    *,
+    city_id: int,
+    street_id: int,
+    group: str,
+) -> dict[str, Any]:
+    """Fetch outage schedule with robust day-boundary windows."""
+    session = async_get_clientsession(hass)
+    now = datetime.now(timezone.utc)
+    day0 = _utc_day_start(now)
+    day2 = day0 + timedelta(days=2)
+    params = {
+        "after": _format_utc(day0),
+        "before": _format_utc(day2),
+        "group[]": group,
+        "time": f"{city_id}{street_id}",
+    }
+    url = _build_url("a_gpv_g", params)
+    headers = {
+        "Accept": "application/ld+json",
+        "Origin": ORIGIN,
+        "Referer": REFERER,
+        "x-debug-key": _debug_key(city_id, street_id),
+    }
+
+    last_empty: dict[str, Any] | None = None
+    last_error: str | None = None
+    for attempt in range(3):
+        async with session.get(url, headers=headers, allow_redirects=False) as resp:
+            text = await resp.text()
+            if resp.status >= 500:
+                _LOGGER.warning("Upstream HTTP %s, retrying schedule fetch", resp.status)
+                last_error = f"Upstream HTTP {resp.status}: {text[:200]}"
+                await asyncio.sleep(0.5 * (2**attempt))
+                continue
+            if resp.status >= 400:
+                raise RuntimeError(f"Upstream HTTP {resp.status}: {text[:200]}")
+            try:
+                data = await resp.json(content_type=None)
+            except Exception as err:  # noqa: BLE001
+                raise RuntimeError(f"Upstream non-JSON response: {text[:200]}") from err
+
+        members = data.get("hydra:member") or []
+        if not members:
+            _LOGGER.warning("Schedule response empty (hydra:member missing)")
+            last_empty = {"raw": data, "times": {}, "date_graph": None, "empty": True}
+            await asyncio.sleep(0.5 * (2**attempt))
+            continue
+
+        times: dict[str, Any] = {}
+        date_graph: datetime | None = None
+        for item in members:
+            if not isinstance(item, dict):
+                continue
+            if date_graph is None:
+                date_graph = _parse_date_graph(item.get("dateGraph"))
+            data_json = item.get("dataJson")
+            if not isinstance(data_json, dict):
+                continue
+            group_data = data_json.get(group)
+            if isinstance(group_data, dict):
+                group_times = group_data.get("times")
+                if isinstance(group_times, dict):
+                    times = group_times
+                    break
+
+        if not times:
+            _LOGGER.warning("Schedule parsed empty times for group %s", group)
+            return {"raw": data, "times": {}, "date_graph": date_graph, "empty": True}
+
+        return {"raw": data, "times": times, "date_graph": date_graph, "empty": False}
+
+    if last_empty is not None:
+        return last_empty
+    if last_error is not None:
+        raise RuntimeError(last_error)
+    return {"raw": {}, "times": {}, "date_graph": None, "empty": True}

@@ -3,13 +3,40 @@
     "step": {
       "user": {
         "title": "Ternopil Grid Schedule",
-        "description": "Choose outage group and ping settings",
+        "description": "Choose outage group and (optionally) enable power ping.",
         "data": {
           "group": "Outage group",
-          "ping_ip": "Ping IP",
-          "ping_port": "Ping TCP port",
-          "ping_timeout": "Ping timeout (s)",
-          "ping_interval": "Ping interval (s)"
+          "ping_enabled": "Enable power ping",
+          "ping_ip": "Ping target IP",
+          "ping_port": "TCP port (for TCP method)",
+          "ping_method": "Ping method",
+          "ping_timeout": "Timeout (s)",
+          "ping_interval": "Interval (s)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "description": "Diagnostics controls. If you enable ping here, an extra step will appear.",
+        "data": {
+          "diagnostics_enabled": "Enable diagnostics logging",
+          "diagnostics_areas": "Diagnostics areas",
+          "api_freeze": "Freeze API (use last good data)",
+          "ping_enabled": "Enable power ping"
+        }
+      },
+      "ping": {
+        "title": "Ping settings",
+        "description": "Configure how to detect actual power state.",
+        "data": {
+          "ping_ip": "Ping target IP",
+          "ping_port": "TCP port (for TCP method)",
+          "ping_method": "Ping method",
+          "ping_timeout": "Timeout (s)",
+          "ping_interval": "Interval (s)"
         }
       }
     }

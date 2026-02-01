@@ -42,4 +42,4 @@ GROUP_OPTIONS = [
 DEFAULT_GROUP = "1.1"
 
 # Data coordinator
-DEFAULT_UPDATE_INTERVAL = 300  # seconds
+DEFAULT_UPDATE_INTERVAL = 1800  # seconds

@@ -103,16 +103,17 @@ class TernopilScheduleCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
         if not isinstance(raw, dict):
             raise UpdateFailed("Upstream payload missing raw")
 
-        # If upstream returned 200 but empty graph: allow setup by returning a short unknown segment.
-        # This prevents config entry from being stuck in "Failed setup" when upstream is temporarily empty.
         if empty or not isinstance(times, dict) or len(times) == 0:
-            now = datetime.now(timezone.utc).replace(microsecond=0)
-            return [{"start_ts": now.timestamp(), "end_ts": (now + timedelta(minutes=30)).timestamp(), "color": "yellow"}]
+            _LOGGER.warning("Schedule empty; keeping last known data if available")
+            if self.data:
+                return self.data
+            return []
 
         day0 = _parse_day0(result.get("date_graph"))
         segs = _times_to_segments(day0, {str(k): str(v) for k, v in times.items()})
         if not segs:
-            _LOGGER.warning("Schedule empty, keeping previous state"); return []
+            _LOGGER.warning("Schedule empty after parsing; keeping previous state")
+            return self.data or []
 
         return segs
 
